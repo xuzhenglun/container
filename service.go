@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/drone/routes"
 	"io"
 	"log"
 	"net/http"
@@ -19,18 +20,6 @@ const (
 type Reply struct {
 	Code string
 	Url  string
-}
-
-func service(w http.ResponseWriter, r *http.Request) {
-	log.Println()
-	switch r.Method {
-	case "GET":
-		download(w, r)
-	case "POST":
-		upload(w, r)
-	case "DELET":
-		fmt.Fprint(w, "have not supported")
-	}
 }
 
 func download(w http.ResponseWriter, r *http.Request) {
@@ -67,6 +56,10 @@ func upload(w http.ResponseWriter, r *http.Request) {
 	tellUserSuccess(w, uuname)
 }
 
+func delete(w http.ResponseWriter, r *http.Request) {
+	//Todo
+}
+
 func tellUserSomethingWrong(w http.ResponseWriter, c string) {
 	r := Reply{Code: c}
 	reply, err := json.Marshal(r)
@@ -91,6 +84,11 @@ func tellUserSuccess(w http.ResponseWriter, url string) {
 }
 
 func main() {
-	http.HandleFunc("/", service)
+	mux := routes.New()
+	mux.Get("/", download)
+	mux.Post("/", upload)
+	mux.Del("/", delete)
+	mux.Static("/", Upload_Dir)
+	http.Handle("/", mux)
 	http.ListenAndServe("localhost:8080", nil)
 }
