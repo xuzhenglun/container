@@ -58,6 +58,8 @@ func upload(w http.ResponseWriter, r *http.Request) {
 
 func delete(w http.ResponseWriter, r *http.Request) {
 	//Todo
+	rm := r.URL.Path
+	os.Remove(Upload_Dir + "/" + rm)
 }
 
 func tellUserSomethingWrong(w http.ResponseWriter, c string) {
@@ -87,7 +89,7 @@ func main() {
 	mux := routes.New()
 	mux.Get("/", download)
 	mux.Post("/", upload)
-	mux.Del("/", delete)
+	mux.Del("/:items", delete)
 	mux.Static("/", Upload_Dir)
 	http.Handle("/", mux)
 	http.ListenAndServe("localhost:8080", nil)
