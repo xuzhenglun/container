@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/drone/routes"
+	"github.com/xuzhenglun/container/sdk"
 	"io"
 	"log"
 	"net/http"
@@ -17,11 +18,6 @@ const (
 	Upload_Dir = "./upload"
 )
 
-type Reply struct {
-	Code string
-	Url  string
-}
-
 func download(w http.ResponseWriter, r *http.Request) {
 	http.StripPrefix("/", http.FileServer(http.Dir(Upload_Dir))).ServeHTTP(w, r)
 }
@@ -29,7 +25,7 @@ func download(w http.ResponseWriter, r *http.Request) {
 func upload(w http.ResponseWriter, r *http.Request) {
 	if r.Header.Get("username") != admin {
 		log.Println(r.Header.Get("username"))
-		tellUserSomethingWrong(w, "403")
+		tellUserSomethingWrong(w, sdk.HaveNoRright)
 		return
 	}
 
@@ -41,29 +37,31 @@ func upload(w http.ResponseWriter, r *http.Request) {
 	}
 	defer file.Close()
 
-	fmt.Fprintf(w, "%v", handler.Header)
-
 	uuname := strconv.Itoa(int(time.Now().Unix())) + handler.Filename
 
 	f, err := os.OpenFile("./upload/"+uuname, os.O_WRONLY|os.O_CREATE, 0666)
 	if err != nil {
-		tellUserSomethingWrong(w, "400")
+		tellUserSomethingWrong(w, sdk.ServerHandleError)
 		fmt.Println(err)
 		return
 	}
 	defer f.Close()
 	io.Copy(f, file)
-	tellUserSuccess(w, uuname)
+	tellUserSuccess(w, sdk.PostSuccess, uuname)
 }
 
 func delete(w http.ResponseWriter, r *http.Request) {
-	//Todo
+	if usr := r.Header.Get("username"); usr != admin {
+		tellUserSomethingWrong(w, sdk.HaveNoRright)
+		return
+	}
 	rm := r.URL.Path
-	os.Remove(Upload_Dir + "/" + rm)
+	os.Remove(Upload_Dir + rm)
+	tellUserSuccess(w, sdk.DeleteSuccsess, rm)
 }
 
 func tellUserSomethingWrong(w http.ResponseWriter, c string) {
-	r := Reply{Code: c}
+	r := sdk.Reply{Code: c}
 	reply, err := json.Marshal(r)
 	if err != nil {
 		log.Println(err)
@@ -73,8 +71,8 @@ func tellUserSomethingWrong(w http.ResponseWriter, c string) {
 	fmt.Fprint(w, reply)
 }
 
-func tellUserSuccess(w http.ResponseWriter, url string) {
-	r := Reply{Code: "200"}
+func tellUserSuccess(w http.ResponseWriter, code string, url string) {
+	r := sdk.Reply{Code: code}
 	r.Url = url
 	reply, err := json.Marshal(r)
 	if err != nil {
@@ -82,7 +80,7 @@ func tellUserSuccess(w http.ResponseWriter, url string) {
 		return
 	}
 	log.Printf("%s", reply)
-	fmt.Fprint(w, reply)
+	fmt.Fprintf(w, "%s", reply)
 }
 
 func main() {
